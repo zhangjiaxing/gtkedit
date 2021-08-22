@@ -1,6 +1,5 @@
 #include <gtk/gtk.h>
 
-
 static void
 on_exit_menu_active(GtkMenuItem *menuitem, gpointer app)
 {
@@ -8,7 +7,39 @@ on_exit_menu_active(GtkMenuItem *menuitem, gpointer app)
 }
 
 static void
-set_menubar(GtkWidget *window, gpointer app)
+on_open_menu_active(GtkMenuItem *menuitem, gpointer window)
+{
+    g_message("openfile xxxxxx");
+    GtkWidget *dialog;
+    GtkFileChooserAction action = GTK_FILE_CHOOSER_ACTION_OPEN;
+    gint res;
+
+    dialog = gtk_file_chooser_dialog_new("Open File",
+                                         GTK_WINDOW(window),
+                                         action,
+                                         "_Cancel",
+                                         GTK_RESPONSE_CANCEL,
+                                         "_Open",
+                                         GTK_RESPONSE_ACCEPT,
+                                         NULL);
+
+    res = gtk_dialog_run(GTK_DIALOG(dialog));
+    if (res == GTK_RESPONSE_ACCEPT)
+    {
+        char *filename;
+        GtkFileChooser *chooser = GTK_FILE_CHOOSER(dialog);
+        filename = gtk_file_chooser_get_filename(chooser);
+        g_message(filename);
+
+        // open_file(filename);
+        g_free(filename);
+    }
+
+    gtk_widget_destroy(dialog);
+}
+
+static GtkWidget *
+init_menubar(GtkWidget *window, GtkWidget *text_view, gpointer app)
 {
     GtkWidget *menubar;
     GtkWidget *menu_file_root;
@@ -21,6 +52,7 @@ set_menubar(GtkWidget *window, gpointer app)
     menu_file = gtk_menu_new();
     menu_item_open = gtk_menu_item_new_with_label("Open File...");
     gtk_menu_shell_append(GTK_MENU_SHELL(menu_file), menu_item_open);
+    g_signal_connect(G_OBJECT(menu_item_open), "activate", G_CALLBACK(on_open_menu_active), window);
 
     menu_item_save = gtk_menu_item_new_with_label("Save");
     gtk_menu_shell_append(GTK_MENU_SHELL(menu_file), menu_item_save);
@@ -30,7 +62,6 @@ set_menubar(GtkWidget *window, gpointer app)
 
     menu_item_exit = gtk_menu_item_new_with_label("Exit");
     gtk_menu_shell_append(GTK_MENU_SHELL(menu_file), menu_item_exit);
-
     g_signal_connect(G_OBJECT(menu_item_exit), "activate", G_CALLBACK(on_exit_menu_active), app);
 
     menu_file_root = gtk_menu_item_new_with_label("File");
@@ -38,28 +69,31 @@ set_menubar(GtkWidget *window, gpointer app)
 
     menubar = gtk_menu_bar_new();
     gtk_menu_shell_append(GTK_MENU_SHELL(menubar), menu_file_root);
-    gtk_box_pack_start(GTK_BOX(window), menubar, FALSE, FALSE, 0);
+
+    return menubar;
 }
 
 static void
 activate(GtkApplication *app, gpointer user_data)
 {
-    GtkWidget *window;
-    GtkWidget *vbox;
-
-    GtkWidget *text;
-
-    window = gtk_application_window_new(app);
+    GtkWidget *window = gtk_application_window_new(app);
     gtk_window_set_title(GTK_WINDOW(window), "GtkEdit");
     gtk_window_set_default_size(GTK_WINDOW(window), 400, 400);
 
-    vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
+    GtkWidget *vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
     gtk_container_add(GTK_CONTAINER(window), vbox);
 
-    // text = gtk_text_view_new();
-    // gtk_container_add(GTK_CONTAINER(window), text);
-    
-    set_menubar(vbox, app);
+    GtkWidget *text_view = gtk_text_view_new();
+    gtk_text_view_set_wrap_mode(GTK_TEXT_VIEW(text_view), GTK_WRAP_WORD_CHAR);
+
+    GtkWidget *menubar = init_menubar(window, text_view, app);
+    gtk_box_pack_start(GTK_BOX(vbox), menubar, FALSE, FALSE, 0);
+
+    GtkWidget *sw = gtk_scrolled_window_new(NULL, NULL);
+    gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(sw), GTK_POLICY_EXTERNAL, GTK_POLICY_AUTOMATIC);
+    gtk_container_add(GTK_CONTAINER(sw), text_view);
+
+    gtk_box_pack_start(GTK_BOX(vbox), sw, TRUE, TRUE, 0);
     gtk_widget_show_all(window);
 }
 
